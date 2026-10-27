@@ -1,0 +1,160 @@
+{
+  "entities": {
+    "Transaction": {
+      "title": "Transaction",
+      "description": "A financial expense or income record logged by the user.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "The UID of the authenticated user who owns this transaction."
+        },
+        "title": {
+          "type": "string",
+          "description": "Short title or merchant name for the transaction."
+        },
+        "amount": {
+          "type": "number",
+          "description": "Monetary value of the transaction (positive amount)."
+        },
+        "type": {
+          "type": "string",
+          "enum": ["expense", "income"],
+          "description": "Whether this record is an expense or income."
+        },
+        "category": {
+          "type": "string",
+          "description": "Budget category (e.g. Food, Transit, Bills, Entertainment, Shopping, Health)."
+        },
+        "paymentMethod": {
+          "type": "string",
+          "description": "Payment instrument (e.g. Cash, Debit Card, Credit Card, Bank Transfer, Apple/Google Pay, Crypto)."
+        },
+        "date": {
+          "type": "string",
+          "description": "Date of transaction in YYYY-MM-DD format."
+        },
+        "notes": {
+          "type": "string",
+          "description": "Optional notes or tags for the transaction."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of document creation."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of last update."
+        }
+      },
+      "required": ["userId", "title", "amount", "type", "category", "paymentMethod", "date", "createdAt"]
+    },
+    "Budget": {
+      "title": "Budget",
+      "description": "Monthly budget envelope allocated for a specific category.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "The UID of the authenticated user."
+        },
+        "category": {
+          "type": "string",
+          "description": "The spending category assigned to this envelope."
+        },
+        "monthlyLimit": {
+          "type": "number",
+          "description": "Maximum spending threshold for this envelope in the month."
+        },
+        "month": {
+          "type": "string",
+          "description": "Target month in YYYY-MM format (or 'all' for perpetual default)."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of budget creation."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of last update."
+        }
+      },
+      "required": ["userId", "category", "monthlyLimit", "month", "createdAt"]
+    },
+    "Subscription": {
+      "title": "Subscription",
+      "description": "Recurring recurring subscription or bill with renewal countdown.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "The UID of the user."
+        },
+        "name": {
+          "type": "string",
+          "description": "Subscription name (e.g. Netflix, Spotify, Gym, iCloud)."
+        },
+        "amount": {
+          "type": "number",
+          "description": "Subscription recurring cost."
+        },
+        "billingCycle": {
+          "type": "string",
+          "enum": ["monthly", "yearly", "weekly"],
+          "description": "Cadence of recurrence."
+        },
+        "category": {
+          "type": "string",
+          "description": "Category for the subscription."
+        },
+        "nextRenewalDate": {
+          "type": "string",
+          "description": "Date of next scheduled renewal (YYYY-MM-DD)."
+        },
+        "paymentMethod": {
+          "type": "string",
+          "description": "Payment instrument used for billing."
+        },
+        "isActive": {
+          "type": "boolean",
+          "description": "Whether the subscription is currently active."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of subscription creation."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of last update."
+        }
+      },
+      "required": ["userId", "name", "amount", "billingCycle", "category", "nextRenewalDate", "paymentMethod", "isActive", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}/transactions/{transactionId}": {
+      "schema": {
+        "$ref": "#/entities/Transaction"
+      },
+      "description": "User's financial transactions (expenses and income)."
+    },
+    "/users/{userId}/budgets/{budgetId}": {
+      "schema": {
+        "$ref": "#/entities/Budget"
+      },
+      "description": "User's category budget envelopes."
+    },
+    "/users/{userId}/subscriptions/{subscriptionId}": {
+      "schema": {
+        "$ref": "#/entities/Subscription"
+      },
+      "description": "User's recurring subscriptions with renewal tracking."
+    }
+  }
+}

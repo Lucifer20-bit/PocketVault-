@@ -1,0 +1,122 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Default deny all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidTransaction(data, userId) {
+      return data.userId == userId &&
+             data.title is string && data.title.size() >= 1 && data.title.size() <= 100 &&
+             (data.amount is int || data.amount is float) && data.amount > 0 && data.amount < 1000000000 &&
+             data.type in ['expense', 'income'] &&
+             data.category is string && data.category.size() >= 1 && data.category.size() <= 50 &&
+             data.paymentMethod is string && data.paymentMethod.size() >= 1 && data.paymentMethod.size() <= 50 &&
+             data.date is string && data.date.size() >= 8 && data.date.size() <= 30 &&
+             (!('notes' in data) || data.notes == null || (data.notes is string && data.notes.size() <= 300)) &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             (!('updatedAt' in data) || data.updatedAt == null || (data.updatedAt is timestamp && data.updatedAt <= request.time));
+    }
+
+    function isValidBudget(data, userId) {
+      return data.userId == userId &&
+             data.category is string && data.category.size() >= 1 && data.category.size() <= 50 &&
+             (data.monthlyLimit is int || data.monthlyLimit is float) && data.monthlyLimit > 0 && data.monthlyLimit < 1000000000 &&
+             data.month is string && data.month.size() >= 3 && data.month.size() <= 20 &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             (!('updatedAt' in data) || data.updatedAt == null || (data.updatedAt is timestamp && data.updatedAt <= request.time));
+    }
+
+    function isValidSubscription(data, userId) {
+      return data.userId == userId &&
+             data.name is string && data.name.size() >= 1 && data.name.size() <= 100 &&
+             (data.amount is int || data.amount is float) && data.amount > 0 && data.amount < 1000000000 &&
+             data.billingCycle in ['monthly', 'yearly', 'weekly'] &&
+             data.category is string && data.category.size() >= 1 && data.category.size() <= 50 &&
+             data.nextRenewalDate is string && data.nextRenewalDate.size() >= 8 && data.nextRenewalDate.size() <= 30 &&
+             data.paymentMethod is string && data.paymentMethod.size() >= 1 && data.paymentMethod.size() <= 50 &&
+             data.isActive is bool &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             (!('updatedAt' in data) || data.updatedAt == null || (data.updatedAt is timestamp && data.updatedAt <= request.time));
+    }
+
+    match /users/{userId} {
+      allow get, list: if isOwner(userId);
+      allow create, update, delete: if isOwner(userId);
+
+      match /transactions/{transactionId} {
+        allow get, list: if isOwner(userId);
+        allow create: if isOwner(userId) &&
+                         isValidId(transactionId) &&
+                         incoming().userId == userId &&
+                         incoming().keys().hasAll(['userId', 'title', 'amount', 'type', 'category', 'paymentMethod', 'date', 'createdAt']) &&
+                         incoming().keys().hasOnly(['userId', 'title', 'amount', 'type', 'category', 'paymentMethod', 'date', 'notes', 'createdAt', 'updatedAt']) &&
+                         isValidTransaction(incoming(), userId);
+        allow update: if isOwner(userId) &&
+                         isValidId(transactionId) &&
+                         incoming().userId == existing().userId &&
+                         incoming().createdAt == existing().createdAt &&
+                         isValidTransaction(incoming(), userId) &&
+                         incoming().diff(existing()).affectedKeys().hasOnly(['title', 'amount', 'type', 'category', 'paymentMethod', 'date', 'notes', 'updatedAt']);
+        allow delete: if isOwner(userId) && isValidId(transactionId);
+      }
+
+      match /budgets/{budgetId} {
+        allow get, list: if isOwner(userId);
+        allow create: if isOwner(userId) &&
+                         isValidId(budgetId) &&
+                         incoming().userId == userId &&
+                         incoming().keys().hasAll(['userId', 'category', 'monthlyLimit', 'month', 'createdAt']) &&
+                         incoming().keys().hasOnly(['userId', 'category', 'monthlyLimit', 'month', 'createdAt', 'updatedAt']) &&
+                         isValidBudget(incoming(), userId);
+        allow update: if isOwner(userId) &&
+                         isValidId(budgetId) &&
+                         incoming().userId == existing().userId &&
+                         incoming().createdAt == existing().createdAt &&
+                         isValidBudget(incoming(), userId) &&
+                         incoming().diff(existing()).affectedKeys().hasOnly(['category', 'monthlyLimit', 'month', 'updatedAt']);
+        allow delete: if isOwner(userId) && isValidId(budgetId);
+      }
+
+      match /subscriptions/{subscriptionId} {
+        allow get, list: if isOwner(userId);
+        allow create: if isOwner(userId) &&
+                         isValidId(subscriptionId) &&
+                         incoming().userId == userId &&
+                         incoming().keys().hasAll(['userId', 'name', 'amount', 'billingCycle', 'category', 'nextRenewalDate', 'paymentMethod', 'isActive', 'createdAt']) &&
+                         incoming().keys().hasOnly(['userId', 'name', 'amount', 'billingCycle', 'category', 'nextRenewalDate', 'paymentMethod', 'isActive', 'createdAt', 'updatedAt']) &&
+                         isValidSubscription(incoming(), userId);
+        allow update: if isOwner(userId) &&
+                         isValidId(subscriptionId) &&
+                         incoming().userId == existing().userId &&
+                         incoming().createdAt == existing().createdAt &&
+                         isValidSubscription(incoming(), userId) &&
+                         incoming().diff(existing()).affectedKeys().hasOnly(['name', 'amount', 'billingCycle', 'category', 'nextRenewalDate', 'paymentMethod', 'isActive', 'updatedAt']);
+        allow delete: if isOwner(userId) && isValidId(subscriptionId);
+      }
+    }
+  }
+}
